@@ -7,6 +7,8 @@ export function nominalInterval(run:Run,channel:'map'|'left'|'right'){
 export function QualityNumbers({value:q,run,channel}:{value:BlockValue;run:Run;channel:'map'|'left'|'right'}){
  const B=run.config.block_seconds,N=nominalInterval(run,channel),required=B*run.config.min_block_coverage;
  const notes:Record<string,string>={
+  nirs_below_range:`NIRS低于本次允许下限 ${run.config.nirs_range_low}%；${run.config.nirs_range_action==='exclude'?'按范围规则设为NaN':'仅作复核提示，不因范围本身排除'}。`,
+  nirs_above_range:`NIRS高于本次允许上限 ${run.config.nirs_range_high}%；${run.config.nirs_range_action==='exclude'?'按范围规则设为NaN':'仅作复核提示，不因范围本身排除'}。`,
   map_negative:'MAP小于0，清洗值设为NaN；核查单位、零点或导出错误。',
   map_zero_review:'MAP等于0，仅重点复核，不凭数值自动排除；结合断线、调零或心搏骤停等事件记录判断。',
   map_low_review:`MAP大于0且低于${run.config.map_review_low} mmHg；保留原值，结合波形与事件复核。`,

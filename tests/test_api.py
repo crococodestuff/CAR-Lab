@@ -30,7 +30,8 @@ def test_offline_identical_and_export_consistent(tmp_path,monkeypatch):
     # HTML escaping applies to metadata.
     a['manifest']['case']['opname']='<script>alert(1)</script>'
     z=zipfile.ZipFile(BytesIO(export_zip(a)))
-    assert set(z.namelist())=={'report.html','manifest.json','annotations.json','config.json','blocks.csv','cox_windows.csv','map_bins.csv','map_quality.csv'}
+    assert set(z.namelist())=={'report.html','manifest.json','annotations.json','config.json','blocks.csv','cox_windows.csv','map_bins.csv','map_quality.csv','quality_comparison.json'}
+    assert json.loads(z.read('quality_comparison.json'))==a['quality_comparison']
     quality=pd.read_csv(BytesIO(z.read('map_quality.csv')))
     assert set(quality.columns)=={'time','MAP_raw','MAP_clean','quality_flag','valid'}
     assert quality.MAP_clean.equals(quality.MAP_raw)

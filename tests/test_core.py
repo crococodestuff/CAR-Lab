@@ -22,7 +22,7 @@ def frame(t,v):
 def linear(a=2,end=900):
     ts=np.arange(end+1,dtype=float)
     vals=50+np.floor(ts/10)%37
-    return {k:frame(ts[::n], (vals if k=='map' else a*vals+3)[::n]) for k,n in [('map',2),('left',5),('right',5)]}
+    return {k:frame(ts[::n], (vals if k=='map' else 60+a*(vals-68)/3)[::n]) for k,n in [('map',2),('left',5),('right',5)]}
 
 @pytest.mark.parametrize('slope',[2,-3])
 def test_linear_and_independent_pearson(slope):
@@ -54,11 +54,11 @@ def test_grid_boundary_and_warmup():
     assert rr['blocks'][20]['map']['mean']==r['blocks'][20]['map']['mean']
 
 def test_irregular_support_matches_manual_union_and_no_row_alignment():
-    f=frame([0.,4.,9.,10.,14.,20.],[10.,20.,30.,40.,50.,60.])
+    f=frame([0.,4.,9.,10.,14.,20.],[30.,40.,50.,60.,70.,80.])
     rows=aggregate_track(f,'left',5,AnalysisConfig(),[],20)
-    assert rows[0]['mean']==20
+    assert rows[0]['mean']==40
     assert rows[0]['coverage']==1
-    assert rows[1]['mean']==45
+    assert rows[1]['mean']==65
     assert rows[1]['coverage']==.9
     # Last point cannot create support beyond the record end.
     rows=aggregate_track(frame([0.],[10.]),'left',5,AnalysisConfig(),[],10)
@@ -124,7 +124,7 @@ def test_duration_reference_and_common_denominator():
 
 def test_hand_small_sample_exact_formula():
     t=linear(end=40)
-    for key,vals in [('map',[2,7,1,9]),('left',[5,3,4,8])]:
+    for key,vals in [('map',[2,7,1,9]),('left',[35,33,34,38])]:
         f=t[key]; f['value']=[vals[min(int(tt//10),3)] for tt in f.time]
     r=analyze(t,AnalysisConfig(window_seconds=40))
     w=next(w for w in r['windows'] if w['end']==40 and w['side']=='left')

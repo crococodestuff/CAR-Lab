@@ -35,6 +35,8 @@ export function RawDataTable({runId,range,selection,hover,windowHover,onSelect,l
  // Window blocks include their start and exclude their end; highlight original rows, not interpolated pairs.
  const windowFirst=useMemo(()=>windowStart===undefined||windowEnd===undefined?-1:rows.findIndex(row=>row.time>=windowStart&&row.time<windowEnd),[rows,windowStart,windowEnd]);
  useEffect(()=>{if(windowFirst>=0)setPage(Math.floor(windowFirst/pageSize));},[windowFirst,windowStart,windowEnd]);
+ const cleanedColumn=channel==='map'||channel==='left'||channel==='right';
+ const rawName=channel==='map'?'MAP_raw':'NIRS_raw',cleanName=channel==='map'?'MAP_clean':'NIRS_clean';
  const pages=Math.max(1,Math.ceil(rows.length/pageSize)),currentPage=Math.min(page,pages-1);
  const visible=rows.slice(currentPage*pageSize,(currentPage+1)*pageSize);
  useEffect(()=>{
@@ -48,19 +50,19 @@ export function RawDataTable({runId,range,selection,hover,windowHover,onSelect,l
   <p className="raw-table-note">{windowHover?`${windowHover.kind==='block'?'平均时间块':'COx 窗口'}：${timeLabel(windowHover.start/60,time)}–${timeLabel(windowHover.end/60,time)} · ${windowFirst>=0?'浅色行为窗内观测':'当前范围与筛选下无窗内观测'}`:'未抽稀 · 随图上鼠标定位 · 点击时间固定位置'}</p>
   {!runId?<p>完成一次分析后，可对照本地完整原始观测。</p>:error?<p role="alert">{error} <button onClick={()=>setRetry(v=>v+1)}>重试读取原始表</button></p>:data?.id!==runId?<p role="status">正在读取本地完整观测…</p>:<>
    <div className="raw-table-scroll" ref={scroller}>
-    <table><thead><tr><th scope="col" role="columnheader">{timeAxisName(time)}</th><th scope="col" role="columnheader">通道</th><th scope="col" role="columnheader">{channel==='map'?'MAP_raw':'数值 / 单位'}</th>{channel==='map'&&<th scope="col" role="columnheader">MAP_clean</th>}<th scope="col" role="columnheader">{channel==='map'?'quality_flag':'点质量'}</th></tr></thead><tbody>{visible.map(row=>{
+    <table><thead><tr><th scope="col" role="columnheader">{timeAxisName(time)}</th><th scope="col" role="columnheader">通道</th><th scope="col" role="columnheader">{cleanedColumn?rawName:'数值 / 单位'}</th>{cleanedColumn&&<th scope="col" role="columnheader">{cleanName}</th>}<th scope="col" role="columnheader">{cleanedColumn?'quality_flag':'点质量'}</th></tr></thead><tbody>{visible.map(row=>{
      const flags=row.flags.split('|').filter(Boolean).map(f=>reasonNames[f]||f).join('、');
      const inWindow=windowStart!==undefined&&windowEnd!==undefined&&row.time>=windowStart&&row.time<windowEnd;
      return <tr key={`${row.channel}:${row.time}`} className={[hover&&same(row,hover)?'raw-row-hovered':selection&&same(row,selection)?'raw-row-selected':!row.valid?'raw-row-invalid':'',inWindow?'raw-row-window':''].filter(Boolean).join(' ')}>
       <td><button className="raw-time-button" title={`原始时间：${row.time} 秒`} aria-label={`定位 ${shortNames[row.channel]} ${timeLabel(row.time/60,time)}（${timeAxisName(time)}），原始时间 ${row.time} 秒`} aria-pressed={!!selection&&same(row,selection)} onClick={()=>onSelect(row)}>{timeLabel(row.time/60,time)}</button></td>
       <td>{shortNames[row.channel]}</td><td title={row.value===null?'缺失':String(row.value)}>{row.value===null?'缺失':String(row.value)} <span className="raw-cell-unit">{units[row.channel]}</span></td>
-      {channel==='map'&&<td title={`MAP_clean: ${row.MAP_clean===null?'NaN':row.MAP_clean??'历史未提供'}；NaN不参与计算`}>{row.MAP_clean===undefined?'—':row.MAP_clean===null?'NaN':String(row.MAP_clean)}</td>}
-      <td title={(row.quality_flag?`quality_flag: ${row.quality_flag} · `:'')+flags||'无额外点质量提示'}><span className={row.valid?'raw-point-valid':'raw-point-invalid'}>{row.valid?(row.flags.includes('_review')?'需复核':'可用'):'排除'}</span>{flags&&<span className="raw-cell-flag"> · 提示</span>}</td>
+      {cleanedColumn&&<td title={`${cleanName}: ${(channel==='map'?row.MAP_clean:row.NIRS_clean)??'NaN'}；NaN不参与计算`}>{(channel==='map'?row.MAP_clean:row.NIRS_clean)===undefined?'—':(channel==='map'?row.MAP_clean:row.NIRS_clean)===null?'NaN':String(channel==='map'?row.MAP_clean:row.NIRS_clean)}</td>}
+      <td title={(row.quality_flag?`quality_flag: ${row.quality_flag} · `:'')+flags||'无额外点质量提示'}><span className={row.valid?'raw-point-valid':'raw-point-invalid'}>{row.valid?((row.flags.includes('_review')||row.flags.includes('nirs_below_range')||row.flags.includes('nirs_above_range'))?'需复核':'可用'):'排除'}</span>{flags&&<span className="raw-cell-flag"> · 提示</span>}</td>
      </tr>;
-    })}{!rows.length&&<tr><td colSpan={channel==='map'?5:4}>当前范围内该通道没有原始观测。</td></tr>}</tbody></table>
+    })}{!rows.length&&<tr><td colSpan={cleanedColumn?5:4}>当前范围内该通道没有原始观测。</td></tr>}</tbody></table>
    </div>
    <div className="raw-table-pages"><span>共 {rows.length.toLocaleString()} 条 · {currentPage+1}/{pages} 页</span><button aria-label="原始表上一页" disabled={!currentPage} onClick={()=>changePage(currentPage-1)}><ChevronLeft size={15}/></button><button aria-label="原始表下一页" disabled={currentPage>=pages-1} onClick={()=>changePage(currentPage+1)}><ChevronRight size={15}/></button></div>
   </>}
-  <details className="raw-table-footnote"><summary>时间与点质量说明</summary><p>时间列跟随横轴所选格式，手术相对时间的负数表示术前；悬停时间可核对完整原始秒数，悬停质量可看具体原因。显示取舍不改变原始时间戳或图表定位。选择 MAP 通道可并列查看 MAP_raw 和 MAP_clean（均为 mmHg）；悬停数值可核对完整精度。NaN 表示排除，悬停质量可核对 quality_flag。点质量对应当前运行；可用点所在的时间块仍可能覆盖不足。各通道按各自时间戳列出，不按行号拼接，也不把图形缺口占位算作观测。</p></details>
+  <details className="raw-table-footnote"><summary>时间与点质量说明</summary><p>时间列跟随横轴所选格式，手术相对时间的负数表示术前；悬停时间可核对完整原始秒数，悬停质量可看具体原因。显示取舍不改变原始时间戳或图表定位。选择 MAP 通道可并列查看 MAP_raw 和 MAP_clean（均为 mmHg）；悬停数值可核对完整精度。NaN 表示排除，悬停质量可核对 quality_flag。选择左/右脑氧可并列查看 NIRS_raw、NIRS_clean；点质量对应当前运行；可用点所在的时间块仍可能覆盖不足。各通道按各自时间戳列出，不按行号拼接，也不把图形缺口占位算作观测。</p></details>
  </aside>;
 }

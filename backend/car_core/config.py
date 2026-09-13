@@ -28,8 +28,16 @@ class AnalysisConfig:
     map_review_low: float = 20
     map_review_high: float = 200
     map_error_codes: tuple = ()
+    nirs_quality_enabled: bool = True
+    nirs_range_low: float = 15
+    nirs_range_high: float = 95
+    nirs_range_action: str = 'exclude'
 
     def __post_init__(self):
+        if type(self.nirs_quality_enabled) is not bool or self.nirs_range_action not in ('exclude', 'review'):
+            raise ValueError('NIRS质控开关或超界处理方式无效')
+        if any(type(v) not in (int, float) or not math.isfinite(v) for v in (self.nirs_range_low, self.nirs_range_high)) or not 0 <= self.nirs_range_low < self.nirs_range_high <= 100:
+            raise ValueError('NIRS允许范围需满足 0 ≤ 下限 < 上限 ≤ 100%')
         for name in ('block_seconds', 'window_seconds', 'step_seconds'):
             v = getattr(self, name)
             if type(v) is not int or v < 1:
@@ -63,7 +71,7 @@ class AnalysisConfig:
     @classmethod
     def from_saved(cls, values):
         # Preserve the policy used to create historical frozen blocks.
-        return cls(**{'map_quality_enabled': False, **values})
+        return cls(**{'map_quality_enabled': False, 'nirs_quality_enabled': False, **values})
 
     @property
     def required_pairs(self):

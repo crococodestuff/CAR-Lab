@@ -33,6 +33,8 @@ def export_zip(result, quality_csv=None, versions=None):
             row.update({f'{ch}_{k}':'|'.join(v) if isinstance(v,list) else v for k,v in b[ch].items() if k not in ('start','end')})
         blocks.append(row)
     with zipfile.ZipFile(buf,'w',zipfile.ZIP_DEFLATED) as z:
+        if 'quality_comparison' in result:
+            z.writestr('quality_comparison.json',json.dumps(result['quality_comparison'],ensure_ascii=False,indent=2,allow_nan=False))
         z.writestr('report.html',report)
         if quality_csv is not None: z.writestr('map_quality.csv',quality_csv)
         for name,value in [('config',result['config']),('manifest',manifest),('annotations',result['annotations'])]: z.writestr(name+'.json',json.dumps(value,ensure_ascii=False,indent=2))

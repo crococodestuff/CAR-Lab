@@ -14,7 +14,7 @@ from backend.car_core.config import AnalysisConfig
 from backend.car_core.ingest import decode_csv, normalize_track
 from backend.car_core.synthetic import generate
 from backend.car_core.quality import mark_quality
-from backend.car_core.raw_summary import summarize_raw
+from backend.car_core.raw_summary import summarize_raw, summarize_quality
 from backend.car_core.signals import signal_payload
 from backend.car_core.mapopt import analyze_mapopt, formula_example
 from backend.car_core.export import export_zip
@@ -273,11 +273,13 @@ async def dispatch(request):
         return {'run_id': r['run_id'], 'config_hash': r['config_hash']}
     if path == '/mapopt/example':
         return formula_example()
-    if match := re.fullmatch(r'/analyses/([a-f0-9]{64})(?:/(signals|blocks|windows|compare|mapopt|map-quality|export)(?:/([^/]+))?)?', path):
+    if match := re.fullmatch(r'/analyses/([a-f0-9]{64})(?:/(signals|blocks|windows|compare|mapopt|map-quality|export|quality-preview)(?:/([^/]+))?)?', path):
         run_id, action, item = match.groups()
         r = get_run(run_id)
         if action is None:
             return r
+        if action == 'quality-preview' and method == 'POST':
+            return summarize_quality(load_tracks(r['manifest']),r['range']['start'],r['range']['end'],AnalysisConfig(**body.get('config',{})),body.get('items',[]))
         if action == 'windows':
             return explain_window(r, item)
         if action == 'compare':
@@ -319,7 +321,7 @@ async def dispatch(request):
             if full and sum(counts.values()) > 500000:
                 raise ValueError('完整原始点超过50万，请缩短分析范围')
             output = signal_payload(tracks, start, end, None if full else 4000, config, r['annotations'])
-            return {'signals': output, 'raw_summary': summarize_raw(tracks, start, end), 'display_only': True, 'full_resolution': full,
+            return {'signals': output, 'quality_comparison': r.get('quality_comparison') or summarize_quality(tracks,start,end,config,r['annotations']), 'raw_summary': summarize_raw(tracks, start, end), 'display_only': True, 'full_resolution': full,
                     'sampling': {k: {'raw_points': counts[k], 'display_points': sum(p['flags'] != 'record_gap' for p in rows), 'nominal_interval': r['manifest']['tracks'][k].get('nominal_interval'), 'interval_seconds': r['manifest']['tracks'][k].get('interval_seconds')} for k, rows in output.items()}}
     raise ValueError('浏览器接口不存在')
 

@@ -11,7 +11,7 @@ from pydantic import BaseModel,ConfigDict,Field,model_validator
 from backend.car_core.config import AnalysisConfig
 from backend.car_core.analysis import explain_window,compare_runs,fingerprint
 from backend.car_core.quality import mark_quality
-from backend.car_core.raw_summary import summarize_raw
+from backend.car_core.raw_summary import summarize_raw, summarize_quality
 from backend.car_core.signals import signal_payload
 from backend.car_core.synthetic import generate
 from backend.car_core.mapopt import formula_example
@@ -61,6 +61,11 @@ class AnnotationItem(BaseModel):
 class AnnotationBody(BaseModel):
     version:int=Field(ge=0)
     items:list[AnnotationItem]=Field(max_length=200)
+
+class QualityPreviewBody(BaseModel):
+    model_config=ConfigDict(extra='forbid')
+    config:dict=Field(default_factory=dict)
+    items:list[AnnotationItem]=Field(default_factory=list,max_length=200)
 
 annotation_lock=Lock()
 
@@ -115,6 +120,14 @@ def analysis(body:AnalyzeBody):
     return tasks.submit(key,calculate)
 @app.get('/api/analyses/{run_id}')
 def result(run_id:str): return runs.get_run(run_id)
+
+@app.post('/api/analyses/{run_id}/quality-preview')
+def quality_preview(run_id:str,body:QualityPreviewBody):
+    r=runs.get_run(run_id)
+    tracks=generate(**r['manifest']['generator']) if r['mode']=='synthetic' else vitaldb.load_manifest_tracks(r['manifest'])
+    try: config=AnalysisConfig(**body.config)
+    except TypeError as exc: raise ValueError(str(exc)) from exc
+    return summarize_quality(tracks,r['range']['start'],r['range']['end'],config,[a.model_dump() for a in body.items])
 @app.get('/api/analyses/{run_id}/windows/{window_id}')
 def window(run_id:str,window_id:str): return explain_window(runs.get_run(run_id),window_id)
 @app.get('/api/analyses/{run_id}/blocks/{index}')
@@ -136,7 +149,7 @@ def run_signals(run_id:str,full:bool=False):
     counts={key:int(((f.time>=r['range']['start'])&(f.time<=r['range']['end'])).sum()) for key,f in tracks.items()}
     if full and sum(counts.values())>500_000: raise ValueError('完整原始点超过50万，请缩短分析范围后查看')
     output=signal_payload(tracks,r['range']['start'],r['range']['end'],None if full else 4000,AnalysisConfig.from_saved(r['config']),r['annotations'])
-    return {'signals':output,'raw_summary':summarize_raw(tracks,r['range']['start'],r['range']['end']),'display_only':True,'full_resolution':full,'sampling':{key:{'raw_points':counts[key],'display_points':sum(p['flags']!='record_gap' for p in rows),'nominal_interval':r['manifest']['tracks'][key].get('nominal_interval'),'interval_seconds':r['manifest']['tracks'][key].get('interval_seconds')} for key,rows in output.items()}}
+    return {'signals':output,'quality_comparison':r.get('quality_comparison') or summarize_quality(tracks,r['range']['start'],r['range']['end'],AnalysisConfig.from_saved(r['config']),r['annotations']),'raw_summary':summarize_raw(tracks,r['range']['start'],r['range']['end']),'display_only':True,'full_resolution':full,'sampling':{key:{'raw_points':counts[key],'display_points':sum(p['flags']!='record_gap' for p in rows),'nominal_interval':r['manifest']['tracks'][key].get('nominal_interval'),'interval_seconds':r['manifest']['tracks'][key].get('interval_seconds')} for key,rows in output.items()}}
 @app.get('/api/analyses/{run_id}/compare/{other_id}')
 def comparison(run_id:str,other_id:str):
     a,b=runs.get_run(run_id),runs.get_run(other_id)

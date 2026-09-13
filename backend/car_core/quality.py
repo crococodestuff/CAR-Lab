@@ -23,6 +23,11 @@ def mark_quality(frame, channel, config, annotations):
         for name, mask, invalid in rules:
             for i in np.flatnonzero(mask): flags[i].add(name)
             if invalid: f.loc[mask, 'valid'] = False
+    if channel in ('left', 'right') and config.nirs_quality_enabled:
+        for name, mask in [('nirs_below_range', np.isfinite(f.value) & (f.value < config.nirs_range_low)),
+                           ('nirs_above_range', np.isfinite(f.value) & (f.value > config.nirs_range_high))]:
+            for i in np.flatnonzero(mask): flags[i].add(name)
+            if config.nirs_range_action == 'exclude': f.loc[mask, 'valid'] = False
     threshold = config.jump_map if channel == 'map' else config.jump_rso2
     values = f.value.to_numpy()
     jumps = np.r_[False, np.abs(np.diff(values)) > threshold] if len(values) else np.array([], dtype=bool)
@@ -48,4 +53,8 @@ def mark_quality(frame, channel, config, annotations):
         f['MAP_raw'] = f.value
         f['MAP_clean'] = f.clean_value
         f['quality_flag'] = f['flags'].replace('', 'range_ok' if config.map_quality_enabled else 'legacy_available')
+    elif channel in ('left', 'right'):
+        f['NIRS_raw'] = f.value
+        f['NIRS_clean'] = f.clean_value
+        f['quality_flag'] = f['flags'].replace('', 'range_ok' if config.nirs_quality_enabled else 'legacy_available')
     return f, exclusions

@@ -7,6 +7,7 @@ from . import ALGORITHM_VERSION
 from .aggregate import aggregate_track
 from .cox import rolling_cox
 from .stratify import stratify
+from .raw_summary import summarize_quality
 
 
 def fingerprint(value):
@@ -32,7 +33,7 @@ def analyze(tracks, config, annotations=(), nominal=None):
         if side in tracks:
             overlap=max(0,min(end,float(tracks['map'].time.max()),float(tracks[side].time.max()))-max(config.start,float(tracks['map'].time.min()),float(tracks[side].time.min())))
         summary[side]={'selected_seconds':end-config.start,'raw_overlap_seconds':overlap,'quality_seconds':sum(config.block_seconds for b in blocks if b['map']['valid'] and b[side]['valid']),'computable_seconds':seconds,'no_result_seconds':end-config.start-seconds,'valid_outputs':len(good),'null_reasons':dict(Counter(r for w in ws if w['cox'] is None for r in w['reasons'])),'above_reference_fraction':sum(w['support_end']-w['support_start'] for w in good if config.reference is not None and w['cox']>config.reference)/seconds if seconds and config.reference is not None else None}
-    return {'algorithm_version':ALGORITHM_VERSION,'config':config.to_dict(),'range':{'start':config.start,'end':end},'blocks':blocks,'windows':windows,'map_bins':stratify(windows,config.map_bin_width),'summary':summary}
+    return {'algorithm_version':ALGORITHM_VERSION,'config':config.to_dict(),'range':{'start':config.start,'end':end},'blocks':blocks,'windows':windows,'map_bins':stratify(windows,config.map_bin_width),'summary':summary,'quality_comparison':summarize_quality(tracks,config.start,end,config,annotations)}
 
 
 def explain_window(result, window_id):

@@ -21,6 +21,6 @@ def signal_payload(tracks,start,end,max_points,config=None,annotations=()):
             f=f.iloc[sorted(indices)]
         records=[]
         for row in f.itertuples():
-            records.append({'time':float(row.time),'value':float(row.value) if np.isfinite(row.value) else None,'valid':bool(row.valid),'flags':row.flags, **({'MAP_raw':float(row.MAP_raw) if np.isfinite(row.MAP_raw) else None,'MAP_clean':float(row.MAP_clean) if np.isfinite(row.MAP_clean) else None,'quality_flag':row.quality_flag} if key=='map' else {})})
+            records.append({'time':float(row.time),'value':float(row.value) if np.isfinite(row.value) else None,'valid':bool(row.valid),'flags':row.flags, **({'MAP_raw':float(row.MAP_raw) if np.isfinite(row.MAP_raw) else None,'MAP_clean':float(row.MAP_clean) if np.isfinite(row.MAP_clean) else None,'quality_flag':row.quality_flag} if key=='map' else {'NIRS_raw':float(row.NIRS_raw) if np.isfinite(row.NIRS_raw) else None,'NIRS_clean':float(row.NIRS_clean) if np.isfinite(row.NIRS_clean) else None,'quality_flag':row.quality_flag} if key in ('left','right') else {})})
         output[key]=sorted(records+gaps,key=lambda r:r['time'])
     return output
