@@ -1,34 +1,67 @@
+<div align="center">
+
 # CAR Lab
 
-脑氧与血压分析学习台：从原始观测、质量检查和时间平均，逐步理解滚动 COx、参数敏感性和探索性 MAPopt。
+**从脑氧与血压信号出发，逐步理解脑血流自动调节分析。**
 
-**在线学习：<https://crococodestuff.github.io/CAR-Lab/>**
+原始信号 · 质量检查 · 滚动 COx · 参数对照 · 探索性 MAPopt
 
-## 在线版
+[**打开在线学习台 →**](https://crococodestuff.github.io/CAR-Lab/)
 
-GitHub Pages 提供静态页面；Pyodide 在浏览器工作线程中运行 `backend/car_core` 的同一 Python 内核。没有远程计算服务，不需要 API 密钥。
+[快速开始](#快速开始) · [本地运行](#本地运行) · [方法说明](docs/methods.md) · [数据来源](docs/data_sources.md)
 
-1. 首次打开需联网加载 Python、NumPy 和 pandas，页面显示加载进度。
-2. 可直接进入“合成信号实验室”，或点击“选择病例 → 更新官方索引”，选择 VitalDB 公开病例并下载分析。
-3. 按左侧七个步骤学习。严格质控没有合格窗口时显示 null，不要仅为获得结果放宽规则。
-4. 数据、标记和已完成运行保存在**当前浏览器的 IndexedDB**，刷新恢复上次完成的学习步骤。不同设备不自动同步；隐私模式或清除网站数据可能丢失缓存，请导出报告。一个站点同时只允许一个标签页使用缓存。
+</div>
 
-网站不会上传观测、标记或计算结果。浏览器向 GitHub Pages 请求页面/内核，向 jsDelivr 请求 Pyodide 及科学计算包，向 VitalDB 请求公开数据；这些服务会接收常规网络请求信息。首次加载需要网络，未提供完整网站离线安装保证。
+---
 
-### 学习功能
+CAR Lab 是一个交互式脑氧与血压分析学习工具。你可以从一段原始记录开始，检查数据质量、追踪每个时间平均点和相关窗口的输入，再比较不同参数如何影响结果。
 
-- 原始图与紧凑观测表联动，支持记录分钟、时分秒、相对手术开始时间。公开数据不能恢复真实日期或当天时钟。
-- 质控前 MAP、左右脑氧取值范围、均值、样本标准差卡片；当前规则的异常/需复核数量预览；可折叠 MAP 与 NIRS 质控学习卡片。
-- NIRS 默认允许15–95%（含边界），可调范围并选择超界排除或仅复核；并列保留原值/清洗值。质量页底部对照处理前后点数、范围、均值、SD与排除比例，单独报告合格块和COx时长。修改规则先更新异常预览，点击重算后更新正式结果。
-- 质量色块显示观测数、支持覆盖、最长缺口和原因；点击定位原始记录并保留缩放。确认伪差后才人工排除。
-- 时间平均与 COx 悬停同步高亮原始图表范围，查看精确输入和相关计算。
-- MAP 原值、清洗值、质量标记同时保留；无效值设 NaN，不截断成正常范围。零值及极端值默认保留复核。
-- A/B 对照、MAP 分箱及 **3、5、10、20、30、60、90、120 分钟** COx 的 MAPopt 二次拟合。左右侧独立；示意参考线默认 ±0.30，可配置。
-- 导出 ZIP（HTML、CSV、清单、参数、标记）、MAP 质控 CSV、独立 MAPopt JSON。
+项目提供两种学习材料：**VitalDB 成人公开病例**用于观察真实记录中的变化与缺失，**合成信号实验室**用于探索可控信号下的方法表现。两类材料在应用中分别呈现。
+
+## 可以做什么
+
+| 学习环节 | 交互与分析 |
+| --- | --- |
+| 观察原始信号 | 联动查看平均动脉压（MAP）、左右脑氧曲线和观测表，缩放定位具体记录 |
+| 检查数据质量 | 预览 MAP 与 NIRS 异常数量，调整质量规则，对照处理前后的统计与有效时长，回到原始信号核对并添加排除标记 |
+| 理解时间平均 | 展开一个时间块，查看参与计算的观测、均值及合格情况 |
+| 拆解滚动 COx | 查看单个窗口的配对数据、散点与相关计算，再将窗口放回整段趋势 |
+| 对比参数 | 保存运行 A / B，在共同有效时间上比较窗口长度、质量规则与标记的影响 |
+| 探索 MAPopt | 按 MAP 分箱，比较多种 COx 窗口下的二次拟合，左右侧分别分析 |
+| 保存学习成果 | 导出包含 HTML 报告、CSV、参数和标记的 ZIP，或单独导出 MAP 质控 CSV、MAPopt JSON |
+
+MAPopt 分析支持 **3、5、10、20、30、60、90、120 分钟**窗口。图表支持记录分钟、经过时分秒及相对手术开始时间；公开数据的时间显示以去标识化记录为基础。
+
+## 快速开始
+
+1. 打开 [CAR Lab 在线学习台](https://crococodestuff.github.io/CAR-Lab/)，等待首次运行环境加载完成。
+2. 进入 **合成信号实验室**体验方法，或点击 **选择病例 → 更新官方索引**，下载一例 VitalDB 公开病例。
+3. 沿左侧七个步骤，从原始信号依次进入质量检查、时间平均、COx、参数对比与 MAPopt。
+4. 完成分析后导出报告，保存结果及对应的参数、标记。
+
+> 某些记录在当前质量规则下可能没有合格窗口。此时显示 `null`，表示结果不可计算；可以展开窗口查看具体原因。
+
+### 浏览器中的计算与存储
+
+在线版无需安装软件或配置 API 密钥。Python 计算通过 Pyodide 在浏览器工作线程中完成，与本地版共用同一分析内核。
+
+- **数据保存在当前浏览器。** 病例、标记和已完成运行存入当前站点的 IndexedDB，刷新后可恢复学习进度；不同设备之间不自动同步。
+- **及时导出需要保留的结果。** 清除网站数据或使用隐私模式可能导致缓存丢失。同一站点请使用一个标签页进行分析。
+- **首次使用需要联网。** 页面来自 GitHub Pages，运行环境来自 jsDelivr，公开病例来自 VitalDB。这些服务接收常规网络请求信息；观测、标记和计算结果不会上传到远程计算服务。
 
 ## 本地运行
 
-要求 Python 3.12、Node.js 22.12+、pnpm 11.19.0。Windows：
+本地版提供 Python 服务、命令行和 Notebook，适合希望在本机保存分析文件或进一步阅读计算过程的用户。
+
+准备 **Python 3.12、Node.js 22.12+ 和 pnpm 11.19.0**，然后克隆仓库：
+
+```bash
+git clone https://github.com/crococodestuff/CAR-Lab.git
+cd CAR-Lab
+```
+
+<details open>
+<summary><strong>Windows / PowerShell</strong></summary>
 
 ```powershell
 python -m venv .venv
@@ -42,24 +75,50 @@ cd ..
 .\start.ps1
 ```
 
-访问 <http://127.0.0.1:8765>。macOS/Linux 使用 `.venv/bin/python`，构建后执行：
+</details>
+
+<details>
+<summary><strong>macOS / Linux</strong></summary>
 
 ```bash
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.lock
+corepack enable
+corepack prepare pnpm@11.19.0 --activate
+cd frontend
+pnpm install --frozen-lockfile
+pnpm build
+cd ..
 .venv/bin/python -m uvicorn backend.app.main:app --host 127.0.0.1 --port 8765
 ```
 
-也可运行 `docker compose up --build -d`，仅绑定本机 8765。本地版在 `data/` 保存 CSV/Parquet/JSON；`CAR_DATA_DIR` 可修改目录，`.env.example` 不会被原生启动自动读取。本地前端无外部 CDN 依赖。
+</details>
 
-开发时运行本地 API，另在 `frontend` 执行 `pnpm dev`。CLI 示例：
+启动后访问 [本地学习台](http://127.0.0.1:8765)。也可在仓库根目录运行 `docker compose up --build -d`，通过相同地址访问。
+
+本地分析文件默认保存在 `data/`，可通过环境变量 `CAR_DATA_DIR` 修改目录。原生启动不会自动读取 `.env.example`，使用自定义目录时需在启动前设置环境变量。
+
+### 命令行与 Notebook
+
+下面的 PowerShell 示例分别更新并筛查公开病例，以及对病例 251 进行参数敏感性分析：
 
 ```powershell
 .\.venv\Scripts\python.exe -m backend.cli --refresh --screen 3
 .\.venv\Scripts\python.exe -m backend.cli --case 251 --sensitivity --output data/demo-sensitivity
 ```
 
-病例 251 是公开可复现的探索示例，候选名单仍动态生成。Notebook 位于 `notebooks/01_vitaldb_cox_walkthrough.ipynb`，提交版本不含执行输出。通用其他来源导入尚未开放，见 [多来源导入规划](docs/multi_source_import.md)。
+macOS / Linux 将 Python 路径替换为 `.venv/bin/python`。完整的分步示例见 [VitalDB COx 分析 Notebook](notebooks/01_vitaldb_cox_walkthrough.ipynb)。病例候选名单根据官方索引动态生成，其他来源的通用导入见 [多来源导入规划](docs/multi_source_import.md)。
 
-## 构建与发布 Pages
+## 开发与部署
+
+应用使用 **React、TypeScript 和 ECharts** 构建界面，**Python** 实现分析。API、CLI、Notebook 和浏览器版复用 `backend/car_core`。
+
+开发前端时，先启动本地 API，再在 `frontend` 目录运行 `pnpm dev`。
+
+<details>
+<summary><strong>构建 GitHub Pages 版本</strong></summary>
+
+完成上述依赖安装后，在仓库根目录运行（`python` 需指向 Python 3.12）：
 
 ```powershell
 python scripts/build_browser.py
@@ -69,26 +128,30 @@ pnpm exec vite build --mode pages
 pnpm exec vite preview --mode pages --host 127.0.0.1 --port 4173
 ```
 
-预览 <http://127.0.0.1:4173/CAR-Lab/>。输出 `frontend/dist-pages/`，不覆盖本地版 `frontend/dist/`。打包脚本只收录明确允许的 Python 源码，不读取本地数据或机器配置。
+访问 [Pages 本地预览](http://127.0.0.1:4173/CAR-Lab/)。静态产物位于 `frontend/dist-pages/`；本地服务版产物位于 `frontend/dist/`。
 
-仓库 Pages 设置使用 **GitHub Actions**。推送 `main` 触发 `.github/workflows/pages.yml`，审查文件、构建、上传静态产物并部署，无需自建密钥。仓库改名时需同步 `frontend/vite.config.ts` 的路径。
+仓库的 Pages 发布源设为 **GitHub Actions** 后，推送 `main` 会触发 [部署工作流](.github/workflows/pages.yml)。Fork 或更改仓库名称时，请同步调整 `frontend/vite.config.ts` 中的站点路径。
 
-## 验证与公开文件审查
+</details>
+
+<details>
+<summary><strong>运行测试</strong></summary>
 
 ```powershell
 .\.venv\Scripts\python.exe -m pytest -q
-python scripts/audit_public.py
 cd frontend
 pnpm exec tsc --noEmit
 pnpm exec playwright test --config playwright.pages.config.ts
 ```
 
-Pages 测试要求预览服务运行、Chrome 已安装且可访问 Pyodide/VitalDB。本地版 `pnpm test:e2e` 要求 8765 服务运行并已缓存公开病例 251；它添加后恢复测试标记。截图、日志和测试导出留在忽略的 `artifacts/` 或 `test-results/`。
+Pages 端到端测试需要运行预览服务、安装 Chrome，并能访问 Pyodide 和 VitalDB。本地版端到端测试使用 `pnpm test:e2e`，需要本地 8765 服务已启动并缓存公开病例 251。
 
-审查脚本检查 Git 索引，拒绝本地数据、缓存、凭据文件、Notebook 输出、用户目录及常见令牌/私人邮件模式。自动扫描不能证明绝无隐私问题，发布仍需人工检查差异及提交身份；不要用强制添加绕过忽略规则。
+</details>
 
-## 方法与来源
+## 方法与数据来源
 
-详见 [计算契约](docs/methods.md) 与 [数据来源及许可](docs/data_sources.md)。VitalDB：Lee HC 等，Scientific Data 9,279 (2022)，DOI [10.1038/s41597-022-01411-5](https://doi.org/10.1038/s41597-022-01411-5)；公开数据 CC BY 4.0。网页与报告保留来源、许可及派生分析说明。
+CAR Lab 面向教学与方法探索，不用于临床决策。COx 描述窗口内 MAP 与脑氧的关联，MAPopt 是观测范围内的探索性估计；结果需结合数据质量和分析参数理解。计算定义与局限详见 [方法说明](docs/methods.md)。
 
-本工具用于成人公开数据教学。MAP 和 NIRS 不是直接脑血流，COx 为间接关联指标，重叠窗口不是独立样本。MAPopt 是观测范围内的探索估计，不输出 LLA/ULA、诊断、治疗目标或新生儿阈值。
+真实病例来自 **VitalDB 成人公开数据集**，数据采用 **CC BY 4.0** 许可。应用和导出报告保留数据来源、许可及派生分析说明，详见 [数据来源与许可](docs/data_sources.md)。
+
+> Lee HC et al. *VitalDB, a high-fidelity multi-parameter vital signs database in surgical patients.* Scientific Data **9**, 279 (2022). [doi:10.1038/s41597-022-01411-5](https://doi.org/10.1038/s41597-022-01411-5)
