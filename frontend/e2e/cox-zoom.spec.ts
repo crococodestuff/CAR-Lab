@@ -8,6 +8,11 @@ test('COx 连续滚轮缩放与平移绘制',async({page})=>{
  const response=page.waitForResponse(r=>/\/api\/analyses\/[a-f0-9]{64}$/.test(r.url())&&r.ok());
  await page.getByRole('button',{name:'运行实验',exact:true}).click();
  const run=await(await response).json();
+ await expect(page.locator('.busy')).toHaveCount(0);
+ await expect(page.getByTestId('raw-window-highlight')).toBeEmpty();
+ await page.getByRole('button',{name:/02 检查质量/}).click();
+ await expect(page.getByTestId('raw-window-highlight')).toBeEmpty();
+ await page.locator('.signal-card').screenshot({path:'../artifacts/raw-no-default-window.png'});
  await page.getByRole('button',{name:/05 看整段 COx/}).click();
  await page.getByLabel('横轴时间显示').selectOption('elapsed');
  const chart=page.getByRole('img',{name:'左右 COx 与无结果点，可点击每一个输出查看窗口',exact:true});
@@ -22,6 +27,7 @@ test('COx 连续滚轮缩放与平移绘制',async({page})=>{
  const highlight=page.getByTestId('raw-window-highlight'),rawRange=page.locator('.signal-card .chart-visible-range');
  const panel=page.getByTestId('raw-data-panel'),windowRows=panel.locator('tr.raw-row-window');
  await expect(panel.locator('.raw-time-button').first()).toBeAttached();
+ await expect(highlight).toContainText('浅色区域：当前查看的 COx 窗口');
  const pinned=await highlight.innerText(),rawBefore=await rawRange.innerText();
  let windowRequests=0,signalRequests=0;page.on('request',r=>{if(r.url().includes('/windows/'))windowRequests++;if(r.url().includes('/signals'))signalRequests++;});
  const point=run.windows.find((w:any)=>w.side==='left'&&w.end>=900&&w.cox!==null);
@@ -90,5 +96,5 @@ test('A/B 悬停使用各自保存的窗口长度',async({page})=>{
  await chart.locator('svg').getByText('运行 A · 左',{exact:true}).click();await chart.locator('svg').getByText('左侧 COx',{exact:true}).click();
  await hover(b);await expect(highlight).toContainText('左侧 COx');await expect(highlight).toHaveAttribute('data-start','300');
  await expect(page.locator('tr.raw-row-window').first().locator('button')).toHaveAttribute('title','原始时间：300 秒');
- await page.getByRole('button',{name:/03 做时间平均/}).click();await expect(highlight).not.toContainText('悬停窗口');
+ await page.getByRole('button',{name:/03 做时间平均/}).click();await expect(highlight).toBeEmpty();
 });

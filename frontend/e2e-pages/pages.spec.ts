@@ -40,11 +40,15 @@ test('浏览器内核、完整学习流程、导出与刷新恢复',async({page}
  await expect(page.getByRole('button',{name:'运行实验',exact:true})).toBeEnabled();
  await page.getByRole('button',{name:/02 检查质量/}).click();
  await expect(page.getByTestId('raw-quality-overview')).toBeVisible();
+ await expect(page.getByTestId('raw-window-highlight')).toBeEmpty();
  await page.getByRole('button',{name:/03 做时间平均/}).click();
  await page.getByRole('button',{name:/展开第/}).click();
  await expect(page.getByRole('heading',{name:/的全部输入观测/})).toBeVisible();
  await page.getByRole('button',{name:/04 看一个窗口/}).click();
  await expect(page.getByTestId('window-inspector')).toBeVisible();
+ await expect(page.getByTestId('raw-window-highlight')).toContainText('浅色区域：当前查看的 COx 窗口');
+ await page.getByRole('button',{name:/02 检查质量/}).click();
+ await expect(page.getByTestId('raw-window-highlight')).toBeEmpty();
  await page.getByRole('button',{name:/07 寻找 MAPopt/}).click();
  await expect(page.getByLabel('MAPopt COx窗口')).toBeVisible({timeout:60000});
  await expect(page.getByLabel('MAPopt COx窗口').locator('option')).toHaveCount(8);
