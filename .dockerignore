@@ -1,0 +1,16 @@
+.venv
+data
+frontend/node_modules
+frontend/dist
+__pycache__
+.pytest_cache
+.git
+artifacts
+frontend/test-results
+frontend/*.tsbuildinfo
+frontend/e2e
+frontend/playwright.config.ts
+
+frontend/dist-pages
+frontend/public/python-core.zip
+frontend/public/python-build.json

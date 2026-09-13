@@ -1,0 +1,91 @@
+import {test,expect} from '@playwright/test';
+
+test('第二步说明、单块悬浮提示与可选排除',async({page,request})=>{
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ let observedRun:any=null;page.on('response',async r=>{if(/\/api\/analyses\/[a-f0-9]{64}$/.test(r.url())&&r.ok())observedRun=await r.json();});
+ const before=await(await request.get('/api/cases/251/annotations')).json();
+ await page.goto('/');await page.getByRole('button',{name:'选择病例',exact:true}).click();
+ await page.getByRole('button',{name:'选择病例 251',exact:true}).click();
+ await page.getByRole('button',{name:/^(下载并分析|分析本地数据)$/}).click();
+ await expect(page.getByRole('button',{name:'重新计算',exact:true})).toBeEnabled({timeout:60000});
+ await expect(page.locator('.busy')).toHaveCount(0);
+ await page.getByRole('button',{name:/02 检查质量/}).click();
+ await page.getByRole('button',{name:'开始查看质量',exact:true}).click();
+ const review=page.getByTestId('quality-review');
+ await expect(review.getByText('不确定时先保留，也可以不作标记直接继续。',{exact:false})).toBeVisible();
+ await expect(page.getByLabel('标记起点')).toBeHidden();
+ const chart=review.getByRole('img',{name:'质量时间带：点击一个色块查看该通道在这段时间的质量原因',exact:true});
+ await chart.scrollIntoViewIfNeeded();
+ const size=await chart.boundingBox();
+ const point={x:75+(200/500)*(size!.width-103),y:20+(190-20-45)/6};
+ await chart.hover({position:point});
+ const tooltip=page.locator('.quality-tooltip:visible');
+ await expect(tooltip).toContainText('有效观测覆盖');
+ const text=await tooltip.innerText();
+ expect((text.match(/右侧 rSO₂/g)||[]).length).toBe(1);
+ expect(text.split('\n').length).toBeLessThan(9);
+ expect((await tooltip.boundingBox())!.height).toBeLessThan(220);
+ // Hovering the quality track must not open another popup on the raw chart.
+ expect(await page.locator('.signal-card').evaluate(el=>Array.from(el.querySelectorAll('div')).filter(d=>d.style.position==='absolute'&&d.style.visibility==='visible'&&d.style.whiteSpace==='nowrap').length)).toBe(0);
+ await page.screenshot({path:'../artifacts/07-quality-tooltip.png'});
+ await chart.click({position:point});
+ await expect(page.getByTestId('quality-selection')).toBeVisible();
+ await expect(page.getByTestId('quality-selection')).toContainText('原始图已定位到附近');
+ // Reproduce the reported bug with a real wheel zoom and a click on an invalid block.
+ const viewport=review.locator('.chart-visible-range');
+ await chart.hover({position:point});
+ for(let i=0;i<60;i++){
+  await page.mouse.wheel(0,-700);await page.waitForTimeout(160);
+  const [a,b]=(await viewport.innerText()).match(/当前视图：([\d.-]+) – ([\d.-]+)/)!.slice(1).map(Number);
+  if(b-a<20)break;
+ }
+ await page.waitForTimeout(300);
+ const zoomText=await viewport.innerText();
+ const [lo,hi]=zoomText.match(/当前视图：([\d.-]+) – ([\d.-]+)/)!.slice(1).map(Number);
+ expect(hi-lo).toBeLessThan(35);
+ await expect(page.locator('.signal-card .chart-visible-range')).toHaveText(zoomText);
+ const block=observedRun.blocks.find((b:any)=>!b.right.valid&&(b.start+b.end)/120>lo+(hi-lo)*.3&&(b.start+b.end)/120<lo+(hi-lo)*.7);
+ expect(block).toBeTruthy();
+ await chart.click({position:{x:75+(((block.start+block.end)/120-lo)/(hi-lo))*(size!.width-103),y:point.y}});
+ await expect(viewport).toHaveText(zoomText);
+ await expect(page.getByTestId('quality-selection')).toContainText(`${block.start}–${block.end}`);
+ await expect(page.locator('.signal-card .chart-visible-range')).not.toHaveText(zoomText);
+ await expect(page.getByTestId('quality-selection')).toContainText('块内至少需要 1 个');
+ await expect(page.getByTestId('quality-selection')).toContainText('最长未覆盖');
+ const timeSelect=page.getByLabel('横轴时间显示');
+ await timeSelect.selectOption('elapsed');
+ const clock=(s:number)=>{const n=Math.round(Math.abs(s));return `${s<0?'-':''}${String(Math.floor(n/3600)).padStart(2,'0')}:${String(Math.floor(n/60)%60).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;};
+ await expect(page.getByTestId('quality-selection')).toContainText(clock(block.start));
+ await review.screenshot({path:'../artifacts/12-quality-clock.png'});
+ await expect(page.locator('.time-display-controls')).toContainText('无法还原真实几点几分');
+ await timeSelect.selectOption('surgery');
+ await expect(page.getByTestId('quality-selection')).toContainText(clock(block.start-observedRun.manifest.case.opstart));
+ await timeSelect.selectOption('minutes');
+ await expect(viewport).toHaveText(zoomText);
+ await review.screenshot({path:'../artifacts/10-quality-preserved-zoom.png'});
+ await page.getByRole('button',{name:'查看下一段不合格数据',exact:true}).click();
+ await expect(page.getByTestId('quality-selection')).toContainText('不合格');
+ await page.getByRole('button',{name:'用这段时间填写排除表（尚未保存）',exact:true}).click();
+ await expect(page.getByLabel('标记起点')).toBeVisible();
+ expect(Number(await page.getByLabel('标记终点').inputValue())).toBeGreaterThan(Number(await page.getByLabel('标记起点').inputValue()));
+ await page.locator('.quality-manual summary').click();
+ // The one-click action invokes the real analysis API, without changing rules or annotations.
+ const originalRun=observedRun;
+ const submitted=page.waitForRequest(r=>r.method()==='POST'&&r.url().endsWith('/api/analyses'));
+ await page.getByRole('button',{name:'一键按当前规则处理并重算',exact:true}).click();
+ expect((await submitted).postDataJSON().config).toEqual(originalRun.config);
+ await expect(page.getByTestId('quality-policy')).toContainText('处理完成：',{timeout:60000});
+ expect(observedRun.config).toEqual(originalRun.config);
+ expect(observedRun.run_id).toBe(originalRun.run_id);
+ expect(observedRun.summary).toEqual(originalRun.summary);
+ await page.getByTestId('quality-policy').screenshot({path:'../artifacts/11-quality-processing.png'});
+ await page.mouse.move(0,0);await review.screenshot({path:'../artifacts/08-quality-guide-1440.png'});
+ await page.setViewportSize({width:1280,height:1000});await page.waitForTimeout(200);
+ await review.screenshot({path:'../artifacts/09-quality-guide-1280.png'});
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();
+ await page.getByRole('button',{name:'继续到第 3 步：做时间平均',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'做时间平均 / 03',exact:true})).toBeVisible();
+ const after=await(await request.get('/api/cases/251/annotations')).json();
+ expect(after).toEqual(before); // Inspecting and prefilling must not save an exclusion.
+ expect(errors).toEqual([]);
+});
