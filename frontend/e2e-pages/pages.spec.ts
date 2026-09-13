@@ -70,9 +70,13 @@ test('直接读取 VitalDB、缓存与人工标记',async({page})=>{
  await expect(page.getByRole('button',{name:'重新计算',exact:true})).toBeEnabled({timeout:120000});
  await page.getByRole('button',{name:/02 检查质量/}).click();
  await page.locator('.quality-manual summary').click();
- await page.getByLabel('标记起点').fill('100');await page.getByLabel('标记终点').fill('160');
+ await expect(page.getByTestId('clean-signal-card')).toBeVisible();
+ await page.getByLabel('标记起点').fill('13.83');await page.getByLabel('标记终点').fill('16.44');
  await page.getByLabel('标记原因').fill('浏览器测试标记');await page.getByRole('button',{name:'添加排除',exact:true}).click();
  await expect(page.locator('.annotation-row').getByText('浏览器测试标记')).toBeVisible();
+ await page.getByLabel('横轴时间显示').selectOption('elapsed');
+ await expect(page.locator('.annotation-row')).toContainText('00:13:49.8–00:16:26.4');
+ await expect(page.getByTestId('clean-signal-stale')).toBeVisible();
  await page.reload();
  await expect(page.getByRole('button',{name:'重新计算',exact:true})).toBeEnabled({timeout:180000});
  await page.locator('.quality-manual summary').click();

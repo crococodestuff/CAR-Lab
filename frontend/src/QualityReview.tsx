@@ -1,4 +1,4 @@
-import {useContext,useEffect,useState,type ReactNode} from 'react';
+import {useContext,useEffect,useState} from 'react';
 import {ArrowRight,Search} from 'lucide-react';
 import {Chart,base} from './Chart';
 import {type Channel,type Run,names,reasonNames,fmt} from './types';
@@ -9,15 +9,14 @@ const channels=['map','left','right'] as const;
 const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
 const reasons=(flags:string[])=>flags.map(f=>reasonNames[f]||f).join('、')||'无额外质量提示';
 
-export function QualityReview({run,real,onInspect,onUseRange,onContinue,children,dirty,busy,processed,onProcess,onCompare,onBlockDetails}:{
+export function QualityReview({run,real,onInspect,onUseRange,onContinue,dirty,busy,processed,onProcess,onCompare,onBlockDetails}:{
  run:Run|null;real:boolean;onInspect:(start:number,end:number)=>void;
- onUseRange:(start:number,end:number,channel:Channel)=>void;onContinue:()=>void;children:ReactNode;
+ onUseRange:(start:number,end:number,channel:Channel)=>void;onContinue:()=>void;
  dirty:boolean;busy:boolean;processed:boolean;onProcess:()=>void;onCompare:()=>void;onBlockDetails:(index:number)=>void;
 }){
  const time=useContext(TimeContext);
  const [selection,setSelection]=useState<{index:number;channel:typeof channels[number]}|null>(null);
- const [manualOpen,setManualOpen]=useState(false);
- useEffect(()=>{setSelection(null);setManualOpen(false);},[run?.run_id]);
+ useEffect(()=>{setSelection(null);},[run?.run_id]);
  const selected=selection&&run?.blocks[selection.index];
  function inspect(index:number,channel:typeof channels[number]){
   const block=run?.blocks[index];if(!block)return;
@@ -60,7 +59,7 @@ export function QualityReview({run,real,onInspect,onUseRange,onContinue,children
    <p>浅棕色不代表你必须删除这段。系统已在计算中按规则处理不合格块；低血压或低脑氧数值本身也不是人工排除的理由。</p>
    <button className="outline" onClick={()=>document.querySelector('.signal-card')?.scrollIntoView({behavior:'smooth',block:'start'})}>查看原始图中的这段时间</button>{' '}
    <button className="outline" onClick={()=>onBlockDetails(selection.index)}>查看这个块的原始观测表</button>{' '}
-   {real&&<button className="outline" onClick={()=>{onUseRange(selected.start,selected.end,selection.channel);setManualOpen(true);}}>用这段时间填写排除表（尚未保存）</button>}
+   {real&&<button className="outline" onClick={()=>{onUseRange(selected.start,selected.end,selection.channel);}}>用这段时间填写排除表（尚未保存）</button>}
   </div>:<p className="quality-hint">先点一个色块查看原因；仅悬停会显示这一块的简短信息，不会修改数据。</p>}
   <ol className="quality-steps">
    <li><strong>选一段时间</strong><span>点击下方色块，或用“查看不合格片段”。每个色块对应一个时间块。</span></li>
@@ -69,11 +68,6 @@ export function QualityReview({run,real,onInspect,onUseRange,onContinue,children
   </ol>
   <details className="quality-definitions"><summary>覆盖不足与观测不足有什么区别？</summary><p>“观测”是设备实际记录的一次测量。计数只统计本块内合格的原始点，至少需要 1 个；没有固定要求每块一定有 2 个或 5 个。</p><p>“覆盖”是这些有效记录按采样间隔能支持的时间，占整块时长的比例。每个点最多支持到下一条记录或一个名义间隔，以更早者为准；还会扣除排除段，并在记录末尾停止，不把长间断当作一直有数据。</p><p>例如：10 秒块里有 2 次脑氧测量，但它们的时间支持合计仅 6.2 秒，则覆盖为 62%；在 80% 要求下，需要至少 8 秒，因此仍不合格。测量次数足够不代表时间分布足够。前一块的支持可以延伸进本块，但前一块的值不算本块均值样本。</p></details>
   {run&&<QualityPolicy run={run} dirty={dirty} busy={busy} processed={processed} onProcess={onProcess} onCompare={onCompare}/>}
-  {real?<details className="quality-manual" open={manualOpen} onToggle={e=>setManualOpen(e.currentTarget.open)}>
-   <summary>可选：我已确认伪差，添加人工排除或查看已有标记</summary>
-   <p>填写起止秒数、选择实际受影响的通道并说明原因，然后点击“添加排除”。也可以在上方原始图右上角选择横向框选工具，拖出时间段后填写。保存标记后，需点击“重新计算”才会影响结果；可撤销。</p>
-   {children}
-  </details>:<p className="caption">合成实验用场景生成缺失与尖峰；人工标记用于真实病例。</p>}
   <div className="quality-continue"><span>没有确认需要排除的片段？保留数据即可。</span><button className="primary" onClick={onContinue}>继续到第 3 步：做时间平均 <ArrowRight size={15}/></button></div>
  </section>;
 }

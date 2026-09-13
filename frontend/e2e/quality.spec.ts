@@ -44,12 +44,14 @@ test('第二步说明、单块悬浮提示与可选排除',async({page,request})
  const [lo,hi]=zoomText.match(/当前视图：([\d.-]+) – ([\d.-]+)/)!.slice(1).map(Number);
  expect(hi-lo).toBeLessThan(35);
  await expect(page.locator('.signal-card .chart-visible-range')).toHaveText(zoomText);
+ await expect(page.locator('.clean-signal-card .chart-visible-range')).toHaveText(zoomText);
  const block=observedRun.blocks.find((b:any)=>!b.right.valid&&(b.start+b.end)/120>lo+(hi-lo)*.3&&(b.start+b.end)/120<lo+(hi-lo)*.7);
  expect(block).toBeTruthy();
  await chart.click({position:{x:75+(((block.start+block.end)/120-lo)/(hi-lo))*(size!.width-103),y:point.y}});
  await expect(viewport).toHaveText(zoomText);
  await expect(page.getByTestId('quality-selection')).toContainText(`${block.start}–${block.end}`);
  await expect(page.locator('.signal-card .chart-visible-range')).not.toHaveText(zoomText);
+ await expect(page.locator('.clean-signal-card .chart-visible-range')).toHaveText(await page.locator('.signal-card .chart-visible-range').innerText());
  await expect(page.getByTestId('quality-selection')).toContainText('块内至少需要 1 个');
  await expect(page.getByTestId('quality-selection')).toContainText('最长未覆盖');
  const timeSelect=page.getByLabel('横轴时间显示');
