@@ -1,6 +1,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {api,downloadApi} from './api';
 import {Chart,base} from './Chart';
+import {coxWindowLabel as windowLabel} from './windowOptions';
 import {type Run,type Side,fmt} from './types';
 
 type Method='windows'|'bins';
@@ -10,7 +11,6 @@ interface Fit {coefficients:{a:number;b:number;c:number}|null;r_squared:number|n
 interface Result {side:Side;window_seconds:number;points:Point[];bins:Bin[];valid_outputs:number;excluded_outputs:number;cross_boundary_outputs:number;support_seconds:number;map_range:[number,number]|null;fit_points:number;fit:Fit;}
 interface Report {version:string;mode:string;source_run_id:string|null;report_id?:string;period:{day:number;start:number;end:number};method:Method;bin_width:number;results:Result[];skipped_window_seconds:number[];}
 const reasons:Record<string,string>={nonpositive_map:'拟合输入包含非正MAP，请回到质量页核查。保留异常点展示，但不据此给出有效估计。',insufficient_fit_points:'拟合至少需要5个点，且有5个不同的MAP坐标。',nonfinite_fit_input:'拟合输入包含非有限数值。',insufficient_map_variation:'观测MAP几乎不变，无法定位最低点。',singular_fit:'MAP分布使二次拟合退化。',not_upward:'曲线未开口向上，或弯曲程度接近数值零。',vertex_outside_range:'最低点不在拟合所覆盖的MAP范围内部，不能外推MAPopt。',minimum_outside_cox:'拟合最低COx超出−1至1，模型不适合给出估计。',weak_fit:'拟合解释度不足（R²低于0.20或无法定义）。'};
-const windowLabel=(seconds:number)=>seconds%60===0?`${seconds/60} 分钟`:`${seconds} 秒`;
 const label=(r:Result)=>`${windowLabel(r.window_seconds)} · ${r.side==='left'?'左侧':'右侧'}`;
 
 export function MapOpt({run,dirty}:{run:Run;dirty:boolean}){
@@ -63,7 +63,7 @@ export function MapOpt({run,dirty}:{run:Run;dirty:boolean}){
    {selected&&<div className="mapopt-controls mapopt-window-controls">
     <label>COx 时间窗口<select aria-label="MAPopt COx窗口" value={selected.window_seconds} onChange={e=>{const r=report.results.find(r=>r.window_seconds===Number(e.target.value)&&r.side===selected.side);if(r)setKey(`${r.window_seconds}-${r.side}`);}}>{[...new Set(report.results.map(r=>r.window_seconds))].map(w=><option key={w} value={w}>{windowLabel(w)}</option>)}</select></label>
     <label>脑氧侧别<select aria-label="MAPopt脑氧侧别" value={selected.side} onChange={e=>setKey(`${selected.window_seconds}-${e.target.value}`)}>{report.results.filter(r=>r.window_seconds===selected.window_seconds).map(r=><option key={r.side} value={r.side}>{r.side==='left'?'左侧':'右侧'}</option>)}</select></label>
-    <span className="caption">按各自窗口重算 COx 与同窗平均 MAP；也可点击下表对照结果。</span>
+    <span className="caption">主分析窗口：{windowLabel(run.config.window_seconds)}；本图窗口：{windowLabel(selected.window_seconds)}。切换本图会使用对应窗口计算的 COx 与同窗平均 MAP，不改动主分析窗口。</span>
    </div>}
    <div className="mapopt-results"><table><thead><tr><th>COx窗口 / 侧别</th><th>有效输出</th><th>支持 / min</th><th>观测 MAP / mmHg</th><th>R²</th><th>MAPopt / mmHg</th></tr></thead><tbody>{report.results.map(r=><tr key={label(r)} className={r===selected?'mapopt-active':''}><td><button onClick={()=>setKey(`${r.window_seconds}-${r.side}`)} aria-label={`查看MAPopt ${label(r)}`}>{label(r)}</button></td><td>{r.valid_outputs}</td><td>{fmt(r.support_seconds/60,1)}</td><td>{r.map_range?`${fmt(r.map_range[0],1)}–${fmt(r.map_range[1],1)}`:'—'}</td><td>{fmt(r.fit.r_squared,3)}</td><td>{r.fit.mapopt===null?'无法估计':fmt(r.fit.mapopt,1)}</td></tr>)}</tbody></table></div>
    {selected&&<>
