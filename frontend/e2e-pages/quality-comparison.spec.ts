@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test';
 
 test('NIRS规则预览、重算前后对照与原始表清洗值',async({page})=>{
  await page.goto('./');
- await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
+ await expect(page.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
  await page.getByRole('button',{name:'合成信号实验室'}).click();
  await page.getByRole('button',{name:'运行实验',exact:true}).click();
  await expect(page.locator('.busy')).toHaveCount(0,{timeout:60000});
@@ -36,6 +36,7 @@ test('NIRS规则预览、重算前后对照与原始表清洗值',async({page})=
  await expect(page.getByRole('button',{name:'应用 NIRS 质控并重算'})).toBeDisabled();
  await page.getByLabel('NIRS范围下限').fill('90');
  await page.reload();
+ await page.getByRole('button',{name:'恢复上次分析'}).click();
  await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
  await expect(left.getByTestId('after-count')).toHaveText('361',{timeout:60000});
  await expect(page.getByTestId('raw-anomalies-left')).toContainText('仅提示 361 点',{timeout:30000});

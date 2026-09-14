@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 export async function checkLearningSource(page:Page,browserMode:boolean){
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('./');
- if(browserMode)await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
+ if(browserMode)await expect(page.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
  await page.getByRole('button',{name:'合成信号实验室',exact:true}).click();
  await page.getByRole('button',{name:'参数',exact:true}).click();
  const picker=page.getByLabel('窗口秒数');

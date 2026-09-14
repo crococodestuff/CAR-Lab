@@ -1,0 +1,2 @@
+import {defineConfig} from '@playwright/test';
+export default defineConfig({testDir:'./e2e-mobile',timeout:240000,workers:1,use:{baseURL:process.env.CAR_PAGES_URL||'http://127.0.0.1:4173/CAR-Lab/',browserName:'webkit',headless:true,hasTouch:true,isMobile:true,trace:'retain-on-failure'},projects:[{name:'phone',use:{viewport:{width:390,height:844}}},{name:'tablet',use:{viewport:{width:768,height:1024}}}],reporter:[['list']]});

@@ -21,11 +21,12 @@ test('浏览器数值核验与缓存写入隔离',async({page,context})=>{
   }finally{worker.terminate();}
  });
  expect(checks.difference).toBeLessThan(1e-10);expect(checks.example).toBeCloseTo(50,9);
- await page.goto('./');await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
- const other=await context.newPage();await other.goto('./');
+ await page.goto('./');await expect(page.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
+ await page.getByRole('button',{name:'合成信号实验室'}).click();await page.getByRole('button',{name:'运行实验',exact:true}).click();await expect(page.getByRole('button',{name:'运行实验',exact:true})).toBeEnabled({timeout:180000});
+ const other=await context.newPage();await other.goto('./');await other.getByRole('button',{name:'合成信号实验室'}).click();await other.getByRole('button',{name:'运行实验',exact:true}).click();
  await expect(other.getByRole('alert')).toContainText('另一个标签页');
  await page.close();await other.reload();
- await expect(other.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
+ await expect(other.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
  await expect(other.getByRole('alert')).toHaveCount(0);
 });
 
@@ -33,7 +34,7 @@ test('浏览器内核、完整学习流程、导出与刷新恢复',async({page}
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
  const requests:string[]=[];page.on('request',r=>requests.push(r.url()));
  await page.goto('./');
- await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
+ await expect(page.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
  await page.getByRole('button',{name:'合成信号实验室'}).click();
  await page.getByRole('button',{name:'运行实验',exact:true}).click();
  await expect(page.locator('.busy')).toHaveCount(0,{timeout:60000});
@@ -55,6 +56,7 @@ test('浏览器内核、完整学习流程、导出与刷新恢复',async({page}
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'导出学习报告'}).click();
  expect((await download).suggestedFilename()).toMatch(/^car-lab-.*\.zip$/);
  await page.reload();
+ await page.getByRole('button',{name:'恢复上次分析'}).click();
  await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
  await expect(page.getByLabel('MAPopt COx窗口')).toBeVisible({timeout:60000});
  await expect(page.getByRole('alert')).toHaveCount(0);
@@ -63,11 +65,11 @@ test('浏览器内核、完整学习流程、导出与刷新恢复',async({page}
  await page.screenshot({path:'../artifacts/pages-learning.png',fullPage:true});
 });
 
-test('直接读取 VitalDB、缓存与人工标记',async({page})=>{
+test('读取公开 VitalDB 快照、缓存与人工标记',async({page})=>{
  await page.goto('./');
- await expect(page.locator('.browser-runtime')).toContainText('计算内核就绪',{timeout:180000});
+ await expect(page.locator('.browser-runtime')).toContainText('轻量浏览就绪',{timeout:180000});
  await page.getByRole('button',{name:'选择病例',exact:true}).click();
- await page.getByRole('button',{name:'更新官方索引'}).click();
+ await page.getByRole('button',{name:'更新病例目录'}).click();
  await expect(page.getByRole('button',{name:'选择病例 251',exact:true})).toBeVisible({timeout:120000});
  await page.getByRole('button',{name:'选择病例 251',exact:true}).click();
  await page.getByRole('button',{name:/^(下载并分析|分析本地数据)$/}).click();
@@ -82,6 +84,7 @@ test('直接读取 VitalDB、缓存与人工标记',async({page})=>{
  await expect(page.locator('.annotation-row')).toContainText('00:13:49.8–00:16:26.4');
  await expect(page.getByTestId('clean-signal-stale')).toBeVisible();
  await page.reload();
+ await page.getByRole('button',{name:'恢复上次分析'}).click();
  await expect(page.getByRole('button',{name:'重新计算',exact:true})).toBeEnabled({timeout:180000});
  await page.locator('.quality-manual summary').click();
  await expect(page.locator('.annotation-row').getByText('浏览器测试标记')).toBeVisible();

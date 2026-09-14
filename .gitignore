@@ -6,6 +6,10 @@ frontend/dist/
 frontend/dist-pages/
 frontend/public/python-core.zip
 frontend/public/python-build.json
+frontend/public/catalog.json
+frontend/public/pyodide/
+frontend/public/public-tracks/
+frontend/test-results-pages/
 __pycache__/
 .pytest_cache/
 .env*

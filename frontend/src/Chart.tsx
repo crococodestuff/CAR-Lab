@@ -5,6 +5,8 @@ const zoomGroups=new Map<string,Set<echarts.ECharts>>();
 const viewReaders=new WeakMap<echarts.ECharts,()=>void>();
 interface HoverPoint {seriesName:string;value:number[];data?:any;}
 export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group,focusRange,showRange=false,onRangeChange,onHover}:{option:any;height?:number;renderer?:'canvas'|'svg';onClick?:(p:any)=>void;onBrush?:(range:number[])=>void;group?:string;focusRange?:[number,number];showRange?:boolean;onRangeChange?:(range:[number,number])=>void;onHover?:(point:HoverPoint|null)=>void}){
+ const touch=matchMedia('(pointer:coarse)').matches;
+ const [pinned,setPinned]=useState(false);const clearHover=useRef<()=>void>(()=>{});
  const time=useContext(TimeContext);const domain=useRef('');const [view,setView]=useState<[number,number]|null>(null);
  const el=useRef<HTMLDivElement>(null);const chart=useRef<echarts.ECharts|null>(null);const click=useRef(onClick);const brush=useRef(onBrush);click.current=onClick;brush.current=onBrush;
  const rangeCallback=useRef(onRangeChange);rangeCallback.current=onRangeChange;
@@ -28,7 +30,7 @@ export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group
   }
   c.on('click',p=>click.current?.(p));c.on('brushEnd',(p:any)=>{const range=p.areas?.[0]?.coordRange;if(range)brush.current?.(range);});
   let hoverFrame=0,lastHover='';const hidden=new Set<string>();
-  const leave=()=>{cancelAnimationFrame(hoverFrame);lastHover='';hoverCallback.current?.(null);};
+  const leave=()=>{cancelAnimationFrame(hoverFrame);lastHover='';setPinned(false);hoverCallback.current?.(null);};clearHover.current=leave;
   c.on('datazoom',leave);
   c.on('legendselectchanged',(event:any)=>{hidden.clear();for(const [name,visible] of Object.entries(event.selected??{}))if(!visible)hidden.add(name);leave();});
   const hover=(event:any)=>{
@@ -54,7 +56,7 @@ export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group
     if(key!==lastHover){lastHover=key;hoverCallback.current?.(nearest);}
    });
   };
-  c.getZr().on('mousemove',hover);c.getZr().on('globalout',leave);
+  if(touch){c.getZr().on('click',(event:any)=>{hover(event);setPinned(true);});}else{c.getZr().on('mousemove',hover);c.getZr().on('globalout',leave);}
   const ro=new ResizeObserver(()=>c.resize());ro.observe(el.current);
   return()=>{cancelAnimationFrame(hoverFrame);ro.disconnect();if(group){zoomGroups.get(group)?.delete(c);if(!zoomGroups.get(group)?.size)zoomGroups.delete(group);}c.dispose();chart.current=null;};
  },[group,renderer]);
@@ -63,7 +65,7 @@ export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group
   const previous=domain.current===time.domainKey?(c.getOption().dataZoom as any[])?.[0]:null;
   domain.current=time.domainKey;
   const zoom=(Array.isArray(option.dataZoom)?option.dataZoom:[]).map((z:any)=>({...z,
-   ...(group==='car-time'?{filterMode:'none'}:{}),
+   ...(group==='car-time'?{filterMode:'none'}:{}),...(touch&&z.type==='inside'?{disabled:true}:{}),
    ...(previous?{startValue:previous.startValue,endValue:previous.endValue,rangeMode:['value','value']}:{start:0,end:100,startValue:null,endValue:null,rangeMode:['percent','percent']})}));
   const axes=group==='car-time'?(Array.isArray(option.xAxis)?option.xAxis:[option.xAxis]).map((axis:any)=>({...axis,
    name:timeAxisName(time),nameTextStyle:{...axis.nameTextStyle,padding:[30,0,0,-110]},
@@ -71,11 +73,15 @@ export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group
    axisPointer:{...axis.axisPointer,label:{formatter:(p:any)=>timeLabel(p.value,time)}}})):option.xAxis;
   // Keep the user's viewport and tooltip component across selection/state updates.
   c.dispatchAction({type:'hideTip'});
-  c.setOption({...option,xAxis:axes,dataZoom:zoom},{notMerge:false,replaceMerge:['series','xAxis','yAxis','grid','dataZoom','visualMap']});
+  const narrow=(el.current?.clientWidth??1000)<500;
+  const grid=narrow?(Array.isArray(option.grid)?option.grid:[option.grid??base.grid]).map((g:any)=>({...g,left:42,right:32})):option.grid;
+  const legend=narrow&&option.legend?{...option.legend,type:'scroll',left:0,right:45,textStyle:{fontSize:10}}:option.legend;
+  c.setOption({...option,grid,legend,tooltip:{...option.tooltip,confine:true,textStyle:{fontSize:narrow?11:14}},xAxis:axes,dataZoom:zoom},{notMerge:false,replaceMerge:['series','xAxis','yAxis','grid','dataZoom','visualMap']});
   readView(c);
  },[option,time.mode,time.operationStart,time.domainKey,renderer]);
  const focusStart=focusRange?.[0],focusEnd=focusRange?.[1];
  useEffect(()=>{const c=chart.current;if(c&&focusStart!==undefined&&focusEnd!==undefined){c.dispatchAction({type:'dataZoom',startValue:focusStart,endValue:focusEnd},{silent:true});readView(c);}},[focusStart,focusEnd]);
- return <><div ref={el} style={{height,width:'100%'}} role="img" aria-label={option.aria?.label?.description||'可交互分析图表'}/>{showRange&&view&&<small className="chart-visible-range">当前视图：{timeLabel(view[0],time)} – {timeLabel(view[1],time)} · {timeAxisName(time)}</small>}</>;
+ function zoomBy(factor:number){const c=chart.current;if(!c)return;const z=(c.getOption().dataZoom as any[])?.[0];if(!z)return;const width=Math.min(100,Math.max(.2,(z.end-z.start)*factor)),middle=(z.start+z.end)/2,start=Math.max(0,Math.min(100-width,middle-width/2));c.dispatchAction({type:'dataZoom',start,end:start+width});}
+ return <><div className="chart-surface" ref={el} style={{height,width:'100%'}} role="img" aria-label={option.aria?.label?.description||'可交互分析图表'}/>{showRange&&view&&<small className="chart-visible-range">当前视图：{timeLabel(view[0],time)} – {timeLabel(view[1],time)} · {timeAxisName(time)}</small>}{touch&&option.dataZoom&&<div className="touch-chart-tools"><button onClick={()=>zoomBy(.5)}>放大</button><button onClick={()=>zoomBy(2)}>缩小</button><button onClick={()=>chart.current?.dispatchAction({type:'dataZoom',start:0,end:100})}>全程</button>{pinned&&onHover&&<button onClick={()=>{clearHover.current();chart.current?.dispatchAction({type:'hideTip'});}}>清除时间预览</button>}</div>}{touch&&onHover&&<p className="touch-chart-note">点按曲线对照原始图表；拖动底部滑块调整范围，单指上下滑动页面。</p>}</>;
 }
 export const base={animation:false,textStyle:{fontFamily:'Inter, Segoe UI, Microsoft YaHei, sans-serif',fontSize:11,color:'#68808a'},grid:{left:58,right:28,top:34,bottom:48},tooltip:{trigger:'axis'},xAxis:{type:'value',name:'时间 / min',nameLocation:'end',nameTextStyle:{padding:[30,0,0,-40]},axisLine:{lineStyle:{color:'#d5e0e4'}},splitLine:{show:false}},yAxis:{type:'value',scale:true,splitLine:{lineStyle:{color:'#edf1f3'}}},dataZoom:[{type:'inside'},{type:'slider',height:16,bottom:6,borderColor:'transparent',fillerColor:'#dbe9eb',handleStyle:{color:'#438d91'}}]};

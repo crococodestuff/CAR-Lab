@@ -56,18 +56,23 @@ async def fetch(resource):
     from pyodide.http import pyfetch
     if resource not in ('cases', 'trks') and not re.fullmatch('[a-fA-F0-9]{40,64}', resource):
         raise ValueError('非法上游资源')
+    catalog_path = DATA/'catalog'/'current.json'
+    published = read(catalog_path).get('public_track_files', {}).get(resource) if catalog_path.exists() else None
+    url = './public-tracks/' + resource + '.csv' if published else BASE + resource
     for attempt in range(3):
         try:
-            response = await asyncio.wait_for(pyfetch(BASE + resource, credentials='omit', redirect='error'), 60)
+            response = await asyncio.wait_for(pyfetch(url, credentials='omit', redirect='error'), 60)
             if not response.ok:
                 raise ValueError(f'VitalDB 返回 HTTP {response.status}')
             raw = await asyncio.wait_for(response.bytes(), 60)
             if len(raw) > 100_000_000:
                 raise ValueError('上游响应超出 100 MB 限制')
+            if published and digest(raw) != published['sha256']:
+                raise ValueError('公开轨道快照校验失败')
             return raw
         except Exception:
             if attempt == 2:
-                raise ValueError('无法读取 VitalDB；请检查网络后重试，也可使用合成实验室') from None
+                raise ValueError('无法读取公开轨道或快照校验失败；请更新病例目录后重试，也可使用合成实验室') from None
             await asyncio.sleep(attempt + 1)
 
 
@@ -154,6 +159,7 @@ async def download_case(cid, auxiliary):
             _, stats = normalize_track(raw)
             info = {**meta, **stats, 'sha256': digest(raw), 'url': BASE+tid,
                     'fetched_at': now(), 'license_source': LICENSE,
+                    'distribution': 'Pages public snapshot' if read(DATA/'catalog'/'current.json').get('public_track_files', {}).get(tid) else 'VitalDB API',
                     'normalization': 'same-time conflicts invalid; nonfinite invalid; stable time sort'}
             write(path, raw)
             save(saved, info)

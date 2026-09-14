@@ -39,7 +39,7 @@ MAPopt 分析支持 **3、5、10、20、30、60、90、120 分钟**窗口。图�
 ## 快速开始
 
 1. 打开 [CAR Lab 在线学习台](https://crococodestuff.github.io/CAR-Lab/)，等待首次运行环境加载完成。
-2. 进入 **合成信号实验室**体验方法，或点击 **选择病例 → 更新官方索引**，下载一例 VitalDB 公开病例。
+2. 进入 **合成信号实验室**体验方法，或点击 **选择病例 → 更新病例目录**，下载一例 VitalDB 公开病例。
 3. 沿左侧七个步骤，从原始信号依次进入质量检查、时间平均、COx、参数对比与 MAPopt。
 4. 完成分析后导出报告，保存结果及对应的参数、标记。
 
@@ -51,7 +51,7 @@ MAPopt 分析支持 **3、5、10、20、30、60、90、120 分钟**窗口。图�
 
 - **数据保存在当前浏览器。** 病例、标记和已完成运行存入当前站点的 IndexedDB，刷新后可恢复学习进度；不同设备之间不自动同步。
 - **及时导出需要保留的结果。** 清除网站数据或使用隐私模式可能导致缓存丢失。同一站点请使用一个标签页进行分析。
-- **首次使用需要联网。** 页面来自 GitHub Pages，运行环境来自 jsDelivr，公开病例来自 VitalDB。这些服务接收常规网络请求信息；观测、标记和计算结果不会上传到远程计算服务。
+- **首次使用需要联网。** 页面、固定版本的运行环境和官方公开病例快照均由 GitHub Pages 提供；构建时从 Pyodide 发布源和 VitalDB 获取。这些服务接收常规网络请求信息；观测、标记和计算结果不会上传到远程计算服务。
 
 ## 本地运行
 
@@ -126,6 +126,7 @@ macOS / Linux 将 Python 路径替换为 `.venv/bin/python`。完整的分步示
 
 ```powershell
 python scripts/build_browser.py
+python scripts/build_web_assets.py
 cd frontend
 pnpm exec tsc --noEmit
 pnpm exec vite build --mode pages
@@ -148,9 +149,21 @@ pnpm exec tsc --noEmit
 pnpm exec playwright test --config playwright.pages.config.ts
 ```
 
-Pages 端到端测试需要运行预览服务、安装 Chrome，并能访问 Pyodide 和 VitalDB。本地版端到端测试使用 `pnpm test:e2e`，需要本地 8765 服务已启动并缓存公开病例 251。
+Pages 端到端测试需要运行预览服务、安装 Chrome。构建时需要访问 VitalDB 和固定版本的 Pyodide 发布源。触屏回归先运行 `pnpm exec playwright install webkit`，再运行 `pnpm exec playwright test --config playwright.mobile.config.ts`。这验证 WebKit 手机和平板视口，不等同于真实 iOS 设备测试。本地版端到端测试使用 `pnpm test:e2e`，需要本地 8765 服务已启动并缓存公开病例 251。
 
 </details>
+
+## 手机、平板与浏览器存储
+
+手机使用顶部“学习步骤”打开导航；图表可点按预览，用放大、缩小按钮和底部滑块调整范围。表格在窄屏下移至图下，长表在内部滚动。
+
+浏览病例目录不启动 Python。“更新病例目录”读取本站发布时生成的公开目录快照（约 84 KB），不在设备上下载并解析完整 VitalDB 轨道索引。每次发布通过 `scripts/build_web_assets.py` 从官方 API 更新，只收录病例选择所需的公开字段；不收录本地数据。新病例要等站点重新构建后纳入。
+
+开始分析或主动恢复上次分析时，才从本站加载固定版本的 Pyodide、NumPy 与 pandas（约 21 MB，压缩传输大小依服务器而异）；计算仍需要额外内存。部署流程仅从 VitalDB 官方 API 获取候选病例的公开数值通道，按原始 CSV 时间戳和值生成同站点快照，并记录来源与 SHA-256；设备仅下载所选病例。这样避免 WebKit 读取部分官方压缩响应失败。未改变数值、补点或插值；不复制本地数据到发布产物。建议使用更新版 Safari，首次计算保持页面在前台；网络、设备内存和系统限制仍可能影响加载。
+
+浏览器从兼容原有 IDBFS 的 IndexedDB 文件库中按需读取当前病例，不恢复整库历史到内存；写入使用事务，失败时本次文件暂留当前计算环境并提示导出。原始下载、标记与运行结果保存在该站点的 IndexedDB，普通 HTTP 缓存另用于运行库加载。站点顶部可查看用量、重启计算环境，或按病例清理原始下载。清理保留标记和已保存的结果，查看原始点前需重新下载；不会自动删除用户数据。
+
+临时模式不持久化新文件，关闭页面或重启计算环境后无法恢复这些临时数据，需提前导出。无 Web Locks 支持时自动使用临时模式；支持时同一站点只允许一个标签页写入。清除浏览器网站数据会删除持久缓存。iPhone、iPad、电脑间不自动同步。
 
 ## 方法与数据来源
 
