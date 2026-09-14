@@ -74,7 +74,7 @@ export function Chart({option,height=280,renderer='canvas',onClick,onBrush,group
   // Keep the user's viewport and tooltip component across selection/state updates.
   c.dispatchAction({type:'hideTip'});
   const narrow=(el.current?.clientWidth??1000)<500;
-  const grid=narrow?(Array.isArray(option.grid)?option.grid:[option.grid??base.grid]).map((g:any)=>({...g,left:42,right:32})):option.grid;
+  const grid=narrow?(Array.isArray(option.grid)?option.grid:[option.grid??base.grid]).map((g:any,i:number)=>{const oldTop=typeof g.top==='number'?g.top:34,top=i===0&&option.legend?Math.max(56,oldTop):oldTop;return {...g,left:42,right:32,top,...(typeof g.height==='number'?{height:g.height-(top-oldTop)}:{})};}):option.grid;
   const legend=narrow&&option.legend?{...option.legend,type:'scroll',left:0,right:45,textStyle:{fontSize:10}}:option.legend;
   c.setOption({...option,grid,legend,tooltip:{...option.tooltip,confine:true,textStyle:{fontSize:narrow?11:14}},xAxis:axes,dataZoom:zoom},{notMerge:false,replaceMerge:['series','xAxis','yAxis','grid','dataZoom','visualMap']});
   readView(c);
